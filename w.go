@@ -11,7 +11,7 @@ var DefaultRen = NewHTMLRen("DEFAULT")
 
 type HTMLRen struct {
         T *template.Template
-        closure *DealContext
+        dc *DealContext
 }
 
 func NewHTMLRen(name string) (ren *HTMLRen) {
@@ -34,6 +34,11 @@ func NewHTMLRenWithTemplate(t *template.Template) *HTMLRen {
                 T: t,
         }
 } */
+
+func (ren *HTMLRen) Delims(left, right string) *HTMLRen {
+        ren.T.Delims(left, right)
+        return ren
+}
 
 func (ren *HTMLRen) Glob(pattern string) (*HTMLRen, error) {
         _, err := ren.T.ParseGlob(pattern)
@@ -67,6 +72,10 @@ func (ren *HTMLRen) MustExpand(w io.Writer, name string) *HTMLRen {
         return ren
 }
 
+func Delims(left, right string) *HTMLRen {
+        return DefaultRen.Delims(left, right)
+}
+
 func MustGlob(patterns ...string) {
         DefaultRen.MustGlob(patterns...)
 }
@@ -79,6 +88,7 @@ func closureFunc(ren *HTMLRen) interface{} {
         return func(name string, args ...string) template.HTML {
                 // TODO: buffer pool for performance
                 w, cc := new(bytes.Buffer), newClosureContext(args...)
+                cc.Set("Context", ren.dc.closure)
                 if err := ren.expand(w, name, cc); err != nil {
                         panic(err) // FIXME: error handling?
                 }
@@ -86,8 +96,11 @@ func closureFunc(ren *HTMLRen) interface{} {
         }
 }
 
-// TODO: support {{ .Context.XXX }}
 type ClosureContext map[string]interface{}
+
+func (cc ClosureContext) Set(name string, data interface{}) {
+        cc[name] = data
+}
 
 // TODO: a better and stronger closure syntax
 func newClosureContext(args ...string) ClosureContext {
