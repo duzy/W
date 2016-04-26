@@ -56,6 +56,16 @@ func (ren *HTMLRen) expand(w io.Writer, name string, data interface{}) error {
         return ren.T.ExecuteTemplate(w, name, data)
 }
 
+func (ren *HTMLRen) LoadString(name string) (s string, err error) {
+        if t := ren.T.Lookup(name); t != nil {
+                w := new(bytes.Buffer)
+                if err = t.Execute(w, nil); err == nil {
+                        s = w.String()
+                }
+        }
+        return
+}
+
 func (ren *HTMLRen) MustGlob(patterns ...string) *HTMLRen {
         for _, s := range patterns {
                 if _, err := ren.Glob(s); err != nil {
@@ -72,6 +82,19 @@ func (ren *HTMLRen) MustExpand(w io.Writer, name string) *HTMLRen {
         return ren
 }
 
+func (ren *HTMLRen) MustLoadString(name string) (res string) {
+        if s, err := ren.LoadString(name); err != nil {
+                panic(err)
+        } else {
+                res = s
+        }
+        return
+}
+
+func (ren *HTMLRen) CanExpand(name string) bool {
+        return ren.T.Lookup(name) != nil
+}
+
 func Delims(left, right string) *HTMLRen {
         return DefaultRen.Delims(left, right)
 }
@@ -82,6 +105,14 @@ func MustGlob(patterns ...string) {
 
 func MustExpand(w io.Writer, name string) {
         DefaultRen.MustExpand(w, name)
+}
+
+func MustLoadString(name string) string {
+        return DefaultRen.MustLoadString(name)
+}
+
+func CanExpand(name string) bool {
+        return DefaultRen.CanExpand(name)
 }
 
 func closureFunc(ren *HTMLRen) interface{} {
